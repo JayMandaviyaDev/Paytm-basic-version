@@ -5,4 +5,4 @@ route = express.Router();
 
 route.use("/user", userRouter);
 
-modules.export = route;
+module.exports = route;
