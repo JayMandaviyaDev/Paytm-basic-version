@@ -3,6 +3,7 @@ const zod = require("zod");
 const { User } = require("../db");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../config");
+const authMiddleware = require("../middleware");
 
 const signupBody = zod.object({
   username: zod.string().email(),
@@ -14,6 +15,12 @@ const signupBody = zod.object({
 const signinBody = zod.object({
   username: zod.string().email(),
   password: zod.string(),
+});
+
+const updateBody = zod.object({
+  password: string(),
+  firstname: string(),
+  lastname: string(),
 });
 
 const route = express.Router();
@@ -57,33 +64,50 @@ route.post("/signup", async (req, res) => {
   });
 });
 
-route.post("/signin", async (req,res)=>{
-    const {success} = signinBody.safeParse(req.body)
-    if(!success){
-        return res.status(411).json({
-            message: "Incorrect inputs"
-        })
-    }
+route.post("/signin", async (req, res) => {
+  const { success } = signinBody.safeParse(req.body);
+  if (!success) {
+    return res.status(411).json({
+      message: "Incorrect inputs",
+    });
+  }
 
-    const user = await User.findOne({
-        username: req.body.username,
-        password: req.body.password
-    })
+  const user = await User.findOne({
+    username: req.body.username,
+    password: req.body.password,
+  });
 
-    if(user){
-        const token = jwt.sign({
-            userid: user._id
-        }, JWT_SECRET)
+  if (user) {
+    const token = jwt.sign(
+      {
+        userid: user._id,
+      },
+      JWT_SECRET
+    );
 
-        res.json({
-            token : token
-        })
-        return
-    }
+    res.json({
+      token: token,
+    });
+    return;
+  }
 
-    res.status(411).json({
-        message:"Error while logging in"
-    })
-})
+  res.status(411).json({
+    message: "Error while logging in",
+  });
+});
+
+route.put("/", authMiddleware, async (req, res) => {
+  const { success } = updateBody.safeParse(req.body);
+  if (!success) {
+    req.status(411).json({
+      message: "Error while updating user",
+    });
+  }
+  await User.updateOne({ _id: req.userid }, req.body);
+
+  res.json({
+    message: "Updated successfully",
+  });
+});
 
 module.exports = route;
